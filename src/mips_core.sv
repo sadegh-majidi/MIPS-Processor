@@ -20,5 +20,11 @@ module mips_core(
     input          clk;
     input          rst_b;
 
+//
+// adding these
+wire [31:0] pc_input;
+DataPath datapath(.rs_num(inst[6:10]), .rt_num(inst[11:15]), .rd_num(inst[16:20]), .sh_mount(inst[21:25]), .opcode(inst[0:5]), .func(inst[26:31]), .imm(inst[16:31]), .pc_value(pc_input));
+PC pc(inst_addr, pc_input, clk, rst_b);
+//
 
 endmodule
