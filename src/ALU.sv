@@ -1,6 +1,6 @@
 module ALU(output reg[31:0] Output, input [31:0] A, input [31:0] B, input [31:0] C, input ADD, input SUB, input ADDu, input SUBu,
  input MUL, input DIV, input AND, input OR, input XOR, input NOR, input SRL, input SLL, input SRA, input SLA, input ALU_Enable);
-	reg[31:0] in_value_add, in_value_addu, in_value_sub, in_value_subu, in_value_and, in_value_orr, in_value_xor, in_value_nor, in_value_mul, in_value_div;
+	reg[31:0] in_value_add, in_value_addu, in_value_sub, in_value_subu, in_value_and, in_value_or, in_value_xor, in_value_nor, in_value_mul, in_value_div;
 	reg[31:0] in_value_shift_right_logical, in_value_shift_left_logical, in_value_shift_right_arithemtic, in_value_shift_left_arithmetic;
 	// A is rs and B is rt, the registers in instruction.
 	ADD add(in_value_add, A, B);
@@ -8,7 +8,7 @@ module ALU(output reg[31:0] Output, input [31:0] A, input [31:0] B, input [31:0]
 	SUB sub(in_value_sub, A, B);
 	SUBu subu(in_value_subu, A, B);
 	AND andd(in_value_and, A, B);
-	OR orr(in_value_orr, A, B);
+	OR orr(in_value_or, A, B);
 	XOR xorr(in_value_xor, A, B);
 	NOR norr(in_value_nor, A, B);
 	MUL mul(in_value_mul, A, B);

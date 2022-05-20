@@ -23,7 +23,7 @@ module mips_core(
 //
 // adding these
 wire [31:0] pc_input;
-DataPath datapath(.rs_num(inst[6:10]), .rt_num(inst[11:15]), .rd_num(inst[16:20]), .sh_mount(inst[21:25]), .opcode(inst[0:5]), .func(inst[26:31]), .imm(inst[16:31]), .pc_value(pc_input));
+DataPath datapath(.rs_num(inst[25:21]), .rt_num(inst[20:16]), .rd_num(inst[15:11]), .sh_mount(inst[10:6]), .opcode(inst[31:26]), .func(inst[5:0]), .imm(inst[15:0]), .pc_value(pc_input));
 PC pc(inst_addr, pc_input, clk, rst_b);
 //
 
