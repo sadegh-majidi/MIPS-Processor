@@ -1,4 +1,4 @@
-module MUL(output reg[31:0] Output, input [31:0] A, input [31:0] B);
+module MUL(output reg signed[31:0] Output, input signed[31:0] A, input signed[31:0] B);
 	always @(A or B)
 	begin
 	Output = A * B;
