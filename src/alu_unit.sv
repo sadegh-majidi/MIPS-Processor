@@ -5,6 +5,7 @@ module alu(
     // input [31:0] B_unsigned,
     input [5:0] aluctl,
     output reg [31:0] C,
+    output reg ready
     // output bcond
     );
 
@@ -36,7 +37,7 @@ module alu(
             // 15: C = A + B;
             // 16: C = C;
             // 17: C = A >> B;
-            default: C = 16'bz;
+            // default: C = 16'bz;
         endcase
     end
      

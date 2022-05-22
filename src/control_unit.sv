@@ -15,12 +15,12 @@ module control_unit(
         input  wire	[31:0]	alu_out_data, // convert to rd_data_output
         input  wire alu_ready,
 
-        output  wire halted_signal,
-        output wire	rd_we,
-        output wire	[31:0]	A,
-        output wire	[31:0]	B,
-        output wire	[5:0]   aluctl,
-        output wire	[31:0]	rd_data_output,
+        output reg halted_signal,
+        output reg	rd_we,
+        output reg	[31:0]	A,
+        output reg	[31:0]	B,
+        output reg	[5:0]   aluctl,
+        output reg	[31:0]	rd_data_output
 );
 /*
     	always @(*) begin
@@ -198,14 +198,9 @@ module control_unit(
     */
 
 
-reg  [31:0] pc;
-initial begin
-    pc <= 32'd0;
-end
 
-
-assign rd_data_output = alu_ready ? rd_data_output : 32'bx
-assign rd_we = alu_ready ? 1 : 0
+assign rd_data_output = alu_ready ? alu_out_data : 32'bx;
+assign rd_we = alu_ready ? 1 : 0;
 
 always @(*) begin
     // R type
@@ -220,6 +215,7 @@ always @(*) begin
             6'b001100: begin
                 halted_signal <= 1;
             end
+            default: halted_signal <= 1;
         endcase
     end
 end

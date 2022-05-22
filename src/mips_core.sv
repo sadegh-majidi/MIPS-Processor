@@ -22,9 +22,9 @@ module mips_core(
 
 
 	wire [5:0]  opcode;
-	wire [4:0]  rs;
-	wire [4:0]  rt;
-	wire [4:0]  rd;
+	wire [4:0]  rs_num;
+	wire [4:0]  rt_num;
+	wire [4:0]  rd_num;
 	wire [15:0] imm;
 	wire [4:0]  sh_amount;
 	wire [31:0] jaddr;
@@ -32,6 +32,10 @@ module mips_core(
     wire [5:0] func;
 
     // todo: add always for reset
+    reg  [31:0] pc;
+    initial begin
+        pc = 32'd0;
+    end
 
 
 	assign opcode       = inst[31:26];
@@ -46,8 +50,14 @@ module mips_core(
 
 
     wire [31:0] rs_data, rt_data;
-    reg [31:0] rd_data_output, alu_out_data;
+    reg [5:0] aluctl;
+    reg [31:0] rd_data_output, alu_out_data, A, B;
     reg rd_we, alu_ready;
+
+    always @(*) begin
+        halted = 1;
+        $display("inst=%b opcode=%b func=%b",inst , opcode, func);
+    end
 
     control_unit control_unit_ (
         // input
@@ -62,13 +72,13 @@ module mips_core(
         .rs_data(rs_data),
         .rt_data(rt_data),
         .alu_out_data(alu_out_data),
-        .alu_ready(alu_ready)
+        .alu_ready(alu_ready),
         // out
         //  alu
         .rd_we(rd_we),
         .A(A),
         .B(B),
-        .aluctl(aluctl)
+        .aluctl(aluctl),
         //  reg 
         .rd_data_output(rd_data_output),
         .halted_signal(halted)
@@ -95,7 +105,7 @@ module mips_core(
         .A(A),
         .B(B),
         .C(alu_out_data),
-        .ready(alu_ready),
+        .ready(alu_ready)
     );
 
 
