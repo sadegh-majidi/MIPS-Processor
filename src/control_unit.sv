@@ -8,12 +8,14 @@ module control_unit(
         input  wire	[31:0]  seimm,
 
 
+
         // data
         input  wire	[31:0]	rs_data,
         input  wire	[31:0]	rt_data,
         input  wire	[31:0]	alu_out_data, // convert to rd_data_output
         input  wire alu_ready,
 
+        output  wire halted_signal,
         output wire	rd_we,
         output wire	[31:0]	A,
         output wire	[31:0]	B,
@@ -213,6 +215,10 @@ always @(*) begin
                 aluctl <= 6'd0;
                 A <= rs_data;
                 B <= rt_data;
+            end
+
+            6'b001100: begin
+                halted_signal <= 1;
             end
         endcase
     end

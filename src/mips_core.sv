@@ -71,6 +71,7 @@ module mips_core(
         .aluctl(aluctl)
         //  reg 
         .rd_data_output(rd_data_output),
+        .halted_signal(halted)
     );
 
 
