@@ -32,10 +32,13 @@ module mips_core(
     wire [5:0] func;
 
     // todo: add always for reset
+    /* verilator lint_off UNOPTFLAT */
     reg  [31:0] pc;
     initial begin
         pc = 32'd0;
     end
+
+    assign inst_addr = pc;
 
 
 	assign opcode       = inst[31:26];
@@ -55,8 +58,13 @@ module mips_core(
     reg rd_we, alu_ready;
 
     always @(*) begin
-        halted = 1;
-        $display("inst=%b opcode=%b func=%b",inst , opcode, func);
+        // halted = 1;
+        $display("inst=%b opcode=%b func=%b, pc=%b, clk=%b",inst , opcode, func, pc, clk);
+    end
+
+    always @(inst) begin 
+        $display("fuck");
+        pc = pc + 32'd4;
     end
 
     control_unit control_unit_ (
