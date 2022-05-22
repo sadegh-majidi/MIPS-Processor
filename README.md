@@ -40,4 +40,4 @@ $ git remote add handouts git@github.com:ce323/mips-handouts.git
 Your repo is ready. Enjoy implementing the project :)
 
 ## Issues
-If you noticed any issue in the handouts, please feel free to open an issue on the handouts repository.s
+If you noticed any issue in the handouts, please feel free to open an issue on the handouts repository.
