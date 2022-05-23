@@ -1,14 +1,16 @@
 module control_unit(
         // inst 
         input clk, rst_b,
-        input[5:0] opcode,func,
+        input [5:0] opcode,func,
         // data
-        input[4:0] rs_num, rt_num, rd_num,
-        input[4:0]  sh_amount,
-        input[15:0] imm,
-        input[25:0] address_j_format,
+        input [4:0] rs_num, rt_num, rd_num,
+        input [4:0]  sh_amount,
+        input [15:0] imm,
+        input [25:0] address_j_format,
         input [31:0] inst_addr,
-        input   [7:0]  mem_data_out[0:3],
+        input [7:0]  mem_data_out[0:3],
+        input [31:0] alu_output,
+
         output reg[31:0] mem_addr,
         output reg[7:0]  mem_data_in[0:3],
         output reg mem_write_en,
@@ -16,7 +18,10 @@ module control_unit(
         output reg [31:0] pc_branch,
         output reg [27:0] pc_j,
         output reg pc_branch_en,
-        output reg pc_j_en
+        output reg pc_j_en,
+        output reg [31:0] alu_input_A,
+        output reg [31:0] alu_input_B,
+        output reg [3:0] alu_ctl
 );
 
     /* verilator lint_off UNOPTFLAT */
@@ -224,7 +229,10 @@ module control_unit(
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rt_num;
-                    rd_data_output = rs_data + imm;
+                    alu_input_A = rs_data;
+                    alu_input_B = imm;
+                    alu_ctl = 4'd0;
+                    rd_data_output = alu_output;
                     // if(imm == 16'b0001001100110111 && inst_addr==32'b00000000000000000000000000101100) begin
                     //     rd_data_output = 32'b00000000000000001101000000001101;
                     // end

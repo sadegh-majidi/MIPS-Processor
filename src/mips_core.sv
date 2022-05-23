@@ -35,6 +35,12 @@ module mips_core(
     wire [25:0] address_j_format;
     reg  [31:0] tmp_inst_addr;
 
+    /* verilator lint_off UNOPTFLAT */
+    wire signed [31:0] temp_alu_A;
+    wire signed [31:0] temp_alu_B;
+    wire [3:0] temp_alu_ctl;
+    reg [31:0] temp_alu_out;
+
 	assign opcode       = inst[31:26];
 	assign func         = inst[5:0];
 	assign rs_num       = inst[25:21];
@@ -69,6 +75,13 @@ module mips_core(
         $display("clock===== done inst=%b opcode=%b func=%b pc=%b",inst , opcode, func, inst_addr);
     end
 
+    alu alu_ (
+        .A(temp_alu_A),
+        .B(temp_alu_B),
+        .aluctl(temp_alu_ctl),
+        .C(temp_alu_out)
+    );
+
     control_unit control_unit_ (
         .clk(clk),
         .rst_b(rst_b),
@@ -89,6 +102,10 @@ module mips_core(
         .mem_addr(mem_addr),
         .mem_data_in(mem_data_in),
         .mem_write_en(mem_write_en),
-        .halted_signal(halted)
+        .halted_signal(halted),
+        .alu_output(temp_alu_out),
+        .alu_input_A(temp_alu_A),
+        .alu_input_B(temp_alu_B),
+        .alu_ctl(temp_alu_ctl)
     );
 endmodule
