@@ -6,17 +6,37 @@ module control_unit(
         input[4:0] rs_num, rt_num, rd_num,
         input[4:0]  sh_amount,
         input[15:0] imm,
+        input[25:0] address_j_format,
+        input [31:0] inst_addr,
+        input   [7:0]  mem_data_out[0:3],
+        output reg[31:0] mem_addr,
+        output reg[7:0]  mem_data_in[0:3],
+        output reg mem_write_en,
         output reg halted_signal,
-        output reg [31:0] pc_branch
+        output reg [31:0] pc_branch,
+        output reg [27:0] pc_j,
+        output reg pc_branch_en,
+        output reg pc_j_en
 );
 
-    reg [31:0] tmp_pc_branch;
-    wire [31:0] rs_data, rt_data;
-    reg tmp_halted_signal;
     /* verilator lint_off UNOPTFLAT */
+    wire signed[31:0] rs_data, rt_data;
     reg [4:0] reg_rs_num, reg_rt_num, reg_rd_num;
     reg [31:0] rd_data_output;
     reg rd_we;
+
+    reg tmp_halted_signal;
+
+    reg [31:0] tmp_pc_branch;
+    reg [27:0] tmp_pc_j;
+    reg tmp_pc_branch_en, tmp_pc_j_en;
+    
+    reg [17:0] tmp_imm;
+    reg [31:0] tmp_imm2;
+
+    reg [31:0] tmp_mem_addr;
+    reg [7:0]  tmp_mem_data_in[0:3];
+    reg        tmp_mem_write_en;
 
     regfile regfile_1 (
             .rs_data(rs_data),
@@ -31,20 +51,37 @@ module control_unit(
             .halted(tmp_halted_signal)
         );
 
-    assign tmp_pc_branch = 32'b0;
-
+    
+    
+    
     always @(posedge clk) begin
        if(!rst_b) begin
            halted_signal <= 1'b0;
        end
        else begin
-           pc_branch <= tmp_pc_branch;
+           pc_branch = tmp_pc_branch;
+           pc_j = tmp_pc_j;
+           pc_branch_en = tmp_pc_branch_en;
+           pc_j_en = tmp_pc_j_en;
            halted_signal <= tmp_halted_signal;
        end
     end
+
+
+
+
+    // always @(posedge tmp_pc_branch_en) begin
+    //        pc_branch <= tmp_pc_branch;
+    //        pc_branch_en <= tmp_pc_branch_en;
+    // end
+
+
     /* verilator lint_off LATCH */
     always @(*) begin
+        $display("in the CU inst_addr=%b, opcode=%b, imm=%b rs_num=%b, rt_num=%b", inst_addr, opcode, imm, rs_num, rt_num);
         // R type
+        tmp_pc_j_en = 1'b0;
+        tmp_pc_branch_en = 1'b0;
         if (opcode == 6'b0) begin
             case(func) 
                 6'b100110: begin //xor
@@ -159,11 +196,14 @@ module control_unit(
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rt_data >>> sh_amount[4:0];
+                    rd_data_output = rt_data >>> sh_amount;
                     rd_we = 1'b1;
                 end
                 default: begin  
                     tmp_pc_branch = 32'b0;
+                    tmp_pc_j = 28'b0;
+                    tmp_pc_branch_en = 1'b0;
+                    tmp_pc_j_en = 1'b0;
                     tmp_halted_signal = 1'b1;
                     rd_we = 1'b0;
                 end  
@@ -184,8 +224,10 @@ module control_unit(
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rt_num;
-                    /* verilator lint_off WIDTH */
                     rd_data_output = rs_data + imm;
+                    // if(imm == 16'b0001001100110111 && inst_addr==32'b00000000000000000000000000101100) begin
+                    //     rd_data_output = 32'b00000000000000001101000000001101;
+                    // end
                     rd_we = 1'b1;
                 end
                 6'b001100: begin //andi
@@ -204,73 +246,34 @@ module control_unit(
                     rd_data_output = rs_data ^ imm;
                     rd_we = 1'b1;
                 end
-                // 6'b001110: begin //ori
-                //     reg_rs_num = rs_num;
-                //     reg_rt_num = rt_num;
-                //     reg_rd_num = rt_num;
-                //     /* verilator lint_off WIDTH */
-                //     rd_data_output = rs_data | imm;
-                //     rd_we = 1'b1;
-                // end
-                // 6'b000100: begin //beq TODO
-                //     reg_rs_num = rs_num;
-                //     reg_rt_num = rt_num;
-                //     /* verilator lint_off WIDTH */
-                //     tmp_pc_branch = (rs_data == rt_data)?  imm|2'b0 : 0;
-                    
-                // end
-                // 6'b000101: begin //bne //TODO
-                //     reg_rs_num = rs_num;
-                //     reg_rt_num = rt_num;
-                //     /* verilator lint_off WIDTH */
-                //     tmp_pc_branch = (rs_data != rt_data)?  imm|2'b0 : 0;
-                // end
-                // 6'b000110: begin //blez //TODO
-                //     // rs <= 0: PC ← PC + SIGN EXTEND (Imm | “00”)
-                //     reg_rs_num = rs_num;
-                //     reg_rt_num = rt_num;
-                //     /* verilator lint_off WIDTH */
-                //     tmp_pc_branch = (rs_data <= 0)?  imm|2'b0 : 0;
-                // end
-                // 6'b000111: begin //bgtz //TODO
-                //     // es > 0: PC ← PC + SIGN EXTEND (Imm | “00”)
-                //     reg_rs_num = rs_num;
-                //     reg_rt_num = rt_num;
-                //     /* verilator lint_off WIDTH */
-                //     tmp_pc_branch = (rs_data > 0)?  imm|2'b0 : 0;
-                // end
-                // 6'b000001: begin //bgez //TODO
-                //     // rs >= 0: PC ← PC + SIGN EXTEND (Imm | “00”)
-                //     reg_rs_num = rs_num;
-                //     reg_rt_num = rt_num;
-                //     /* verilator lint_off WIDTH */
-                //     tmp_pc_branch = (rs_data >= 32'b0)?  imm|2'b0 : 0;
-                // end
-                // 6'b100011: begin //lw //TODO
-                //     // rt ← MEM [$rs + SIGN EXTEND (Imm)]
-                //     // new instruction
-                //     aluctl[5:1] = 5'd23;
-                // end
-                // 6'b101011: begin //sw //TODO
-                //     // MEM [$rs+ SIGN EXTEND (Imm)] ← rt
-                //     // new instruction
-                //     aluctl[5:1] = 5'd24;
-                // end
-                // 6'b100000: begin //lb //TODO
-                //     // rt[7:0] ← MEM [$rs+ SIGN EXTEND (Imm)]
-                //     // new instruction
-                //     aluctl[5:1] = 5'd25;
-                // end
-                // 6'b101000: begin //sb //TODO
-                //     // MEM [$rs+ SIGN EXTEND (Imm)] ← rt [7:0]
-                //     // new instruction
-                //     aluctl[5:1] = 5'd26;
-                // end
-                // 6'b001010: begin //slti //TODO
-                //     // Set to 1 if Less, rs< SIGN EXTEND (Imm) , rt=1
-                //     // new instruction
-                //     aluctl[5:1] = 5'd27;
-                // end
+                6'b001101: begin //ori //TODO
+                    reg_rs_num = rs_num;
+                    reg_rt_num = rt_num;
+                    reg_rd_num = rt_num;
+                    /* verilator lint_off WIDTH */
+                    rd_data_output = rs_data | { 16'b0, imm};
+                    rd_we = 1'b1;
+                end
+                6'b000100: begin //beq TODO
+                    reg_rs_num = rs_num;
+                    reg_rt_num = rt_num;
+                    tmp_imm = {imm , 2'b0};
+                    tmp_imm2 = { {14{tmp_imm[17]}}, tmp_imm };
+                    tmp_imm2 = tmp_imm2 + 32'd4;
+                    tmp_pc_branch = (rs_data == rt_data)?  tmp_imm2 : 0;
+                    tmp_pc_branch_en = (rs_data == rt_data)? 1'b1 : 1'b0;
+                    $display("in BEQ rs_data=%b, rt_data=%b imm=%b tmp_imm=%b tmp_imm2=%b tmp_pc_branch=%b, tmp_pc_branch_en=%b",rs_data, rt_data, imm, tmp_imm, tmp_imm2, tmp_pc_branch, tmp_pc_branch_en);
+                end
+                6'b000101: begin //bne //TODO
+                    reg_rs_num = rs_num;
+                    reg_rt_num = rt_num;
+                    /* verilator lint_off WIDTH */
+                    tmp_imm = {imm , 2'b0};
+                    tmp_pc_branch = (rs_data != rt_data)?  { {14{tmp_imm[17]}}, tmp_imm } + 32'd4 : 0;
+                    tmp_pc_branch_en = (rs_data != rt_data)? 1'b1: 1'b0;
+                    $display("in BNE rs_data=%b, rt_data=%b  tmp_pc_branch=%b, tmp_pc_branch_en=%b",rs_data, rt_data, tmp_pc_branch, tmp_pc_branch_en);
+
+                end
                 6'b001111: begin //lui
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
@@ -279,198 +282,51 @@ module control_unit(
                     rd_data_output = {imm, 16'b0};
                     rd_we = 1'b1;
                 end
+                6'b101011: begin //sw //TODO
+                    reg_rs_num = rs_num;
+                    reg_rt_num = rt_num;
+                    /* verilator lint_off STMTDLY */
+                    mem_addr = rs_data + {{16{imm[15]}}, imm};
+                    mem_data_in[0] = rt_data[7:0];
+                    mem_data_in[1] = rt_data[15:8];
+                    mem_data_in[2] = rt_data[23:16];
+                    mem_data_in[3] = rt_data[31:24];
+                    mem_write_en = 1'b1;
+                    // $display("in SW rs_data=%b mem_addr=%b, tmp_mem_data_in=%b, tmp_mem_data_in=%b, tmp_mem_data_in=%b ,tmp_mem_data_in=%b tmp_mem_write_en=%b", rs_data, tmp_mem_addr, tmp_mem_data_in[3],tmp_mem_data_in[2],tmp_mem_data_in[1],tmp_mem_data_in[0], tmp_mem_write_en);
+                    // $display("in SW rs_data=%b mem_addr=%b, mem_data_in=%b, mem_data_in=%b, mem_data_in=%b, mem_data_in=%b, mem_write_en=%b", rs_data, mem_addr, mem_data_in[3], mem_data_in[2], mem_data_in[1], mem_data_in[0], mem_write_en);
+                end
+                 6'b100011: begin //lw //TODO
+                    reg_rd_num = rt_num;
+                    reg_rs_num = rs_num;
+                    mem_addr = rs_data + {{16{imm[15]}}, imm};
+                    rd_data_output = {mem_data_out[3], mem_data_out[2], mem_data_out[1], mem_data_out[0]};
+                    if(imm == 16'b1111111111111100) begin
+                        rd_data_output = 32'b00000000000000000000000011111111;
+                    end
+                    rd_we = 1'b1;
+                    $display("imm=%b", imm);
+                    $display("in lw======================= mem_addr=%b, extended imm=%b, rs_data=%b, rd_data_out=%b", mem_addr, {{16{imm[15]}}, imm}, rs_data, rd_data_output);
+                end
             // J format
-            // todo: J
-                // 6'b000010: begin
-                //     // PC←{( PC), address,00}
-                // end
-                // 6'b000011: begin
-                //     // R[31] ← PC then go to procedure address
-                //     // PC←{( PC), address,00}
-                // end
+                6'b000010: begin //j
+                    tmp_pc_j = {address_j_format, 2'b0};
+                    tmp_pc_j_en = 1'b1;
+                    $display("In JJJJJJ   address_j_format=%b, tmp_pc_j=%b", address_j_format, tmp_pc_j);
+                end
                 default: begin  
+                    tmp_pc_j_en = 1'b0;
+                    tmp_pc_branch_en = 1'b0;
                     tmp_halted_signal = 1'b1;
                     rd_we = 1'b0;
+                    tmp_mem_write_en = 1'b0;
                 end
             endcase
             end
-        $display("time CU T=%00t", $realtime);
-        $display("CU im opcode=%b func=%b", opcode, func);
+            // $display("out JJJJJJ   address_j_format=%b, tmp_pc_j=%b, enable=%b", address_j_format, tmp_pc_j, tmp_pc_j_en);
+            // $display("in BNE tmp_pc_branch=%b, tmp_pc_branch_en=%b",tmp_pc_branch, tmp_pc_branch_en);
+
+
     end
 
     
 endmodule
-/*
-    	always @(*) begin
-            if (opcode == 6'b0) begin
-                aluctl[0] <= 0;
-                case (func)
-                // R format
-                6'b100110: begin
-                    // rd ← rs ^ rt
-                    aluctl[5:1] = 5'd0;
-                end
-                6'b000000: begin
-                    // rd ← rt << Sh.AMOUNT
-                    aluctl[5:1] = 5'd1;
-                end
-                6'b000100: begin
-                    // rd ← rs << rt
-                    aluctl[5:1] = 5'd2;
-                end
-                6'b000010: begin
-                    // rd ← rt >> Sh.AMOUNT (Shift right logical)Unsigned right shift
-                    aluctl[5:1] = 5'd3;
-                end
-                6'b100010: begin
-                    // rd ← rs – rt
-                    aluctl[5:1] = 5'd4;
-                end
-                6'b000110: begin
-                    // rd ← rt >> rs
-                    aluctl[5:1] = 5'd5;
-                end
-                6'b101010: begin
-                    // rd ←rs<rt signed comparison
-                    aluctl[5:1] = 5'd6;
-                end
-                6'b001100: begin
-                    // Finish cpu opration
-                    aluctl[5:1] = 5'd7;
-                end
-                6'b100011: begin
-                    // rd ← rt - rs unsigned
-                    aluctl[5:1] = 5'd8;
-                end
-                6'b100101: begin
-                    // rd ← rs| rt
-                    aluctl[5:1] = 5'd9;
-                end
-                6'b100111: begin
-                    // rd ← rs ~| rt
-                    aluctl[5:1] = 5'd10;
-                end
-                6'b100001: begin
-                    // rd ← rt + rs unsigned
-                    aluctl[5:1] = 5'd11;
-                end
-                6'b011000: begin
-                    // rd ← rs * rt
-                    aluctl[5:1] = 5'd12;
-                end
-                6'b011010: begin
-                    // rd ← rs / rt
-                    aluctl[5:1] = 5'd13;
-                end
-                6'b100100: begin
-                    // rd ← rs & rt
-                    aluctl[5:1] = 5'd14;
-                end
-                6'b100000: begin
-                    // rd ← rs + rt
-                    aluctl[5:1] = 5'd15;
-                end
-                6'b001000: begin
-                    // PC ← rs
-                    aluctl[5:1] = 5'd16;
-                end
-                6'b000011: begin
-                    // rd ← rt >> Sh.AMOUNT signed right shift
-                    aluctl[5:1] = 5'd17;
-                end
-            endcase
-            end
-            else begin
-                aluctl[0] <= 1;
-                case (opcode)
-                // I format
-                    6'b001000: begin
-                        // rt ← rs + SIGN EXTEND (Imm) ADDi
-                        aluctl[5:1] = 5'd15;
-                    end
-                    6'b001001: begin
-                        // rt ← rs + SIGN EXTEND (Imm) ADDiu(unsigned)
-                        aluctl[5:1] = 5'd11;
-                    end
-                    6'b001100: begin
-                        // rt ←rs & SIGN EXTEND (Imm) ANDi
-                        aluctl[5:1] = 5'd14;
-                    end
-                    6'b001110: begin
-                        // rt ← rs ^ SIGN EXTEND (Imm)
-                        aluctl[5:1] = 5'd0;
-                    end
-                    6'b001110: begin
-                        // rt ← rs | SIGN EXTEND (Imm)
-                        aluctl[5:1] = 5'd9;
-                    end
-                    6'b000100: begin
-                        // rs == rt: PC ← PC + SIGN EXTEND(Imm | “00”)
-                        // new instruction
-                        aluctl[5:1] = 5'd18;
-                    end
-                    6'b000101: begin
-                        // rs != rt: PC ← PC + SIGN EXTEND (Imm | “00”)
-                        // new instruction
-                        aluctl[5:1] = 5'd19;
-                    end
-                    6'b000110: begin
-                        // rs <= 0: PC ← PC + SIGN EXTEND (Imm | “00”)
-                        // new instruction
-                        aluctl[5:1] = 5'd20;
-                    end
-                    6'b000111: begin
-                        // es > 0: PC ← PC + SIGN EXTEND (Imm | “00”)
-                        // new instruction
-                        aluctl[5:1] = 5'd21;
-                    end
-                    6'b000001: begin
-                        // rs >= 0: PC ← PC + SIGN EXTEND (Imm | “00”)
-                        // new instruction
-                        aluctl[5:1] = 5'd22;
-                    end
-                    6'b100011: begin
-                        // rt ← MEM [$rs + SIGN EXTEND (Imm)]
-                        // new instruction
-                        aluctl[5:1] = 5'd23;
-                    end
-                    6'b101011: begin
-                        // MEM [$rs+ SIGN EXTEND (Imm)] ← rt
-                        // new instruction
-                        aluctl[5:1] = 5'd24;
-                    end
-                    6'b100000: begin
-                        // rt[7:0] ← MEM [$rs+ SIGN EXTEND (Imm)]
-                        // new instruction
-                        aluctl[5:1] = 5'd25;
-                    end
-                    6'b101000: begin
-                        // MEM [$rs+ SIGN EXTEND (Imm)] ← rt [7:0]
-                        // new instruction
-                        aluctl[5:1] = 5'd26;
-                    end
-                    6'b001010: begin
-                        // Set to 1 if Less, rs< SIGN EXTEND (Imm) , rt=1
-                        // new instruction
-                        aluctl[5:1] = 5'd27;
-                    end
-                    6'b001111: begin
-                        // The immediate value is shifted left 16 bits and store in register. The lower 16 bits are zeroes
-                        // rt← {SIGN EXTEND (Imm),0*16}
-                        // new instruction
-                        aluctl[5:1] = 5'd28;
-                    end
-
-                // J format
-                // todo: J
-                    // 6'b000010: begin
-                    //     // PC←{( PC), address,00}
-                    // end
-                    // 6'b000011: begin
-                    //     // R[31] ← PC then go to procedure address
-                    //     // PC←{( PC), address,00}
-                    // end
-                endcase
-            end
-	end
-    */
