@@ -28,11 +28,7 @@ module mips_core(
 	wire [4:0]  rd_num;
     wire [4:0]  sh_amount;
     wire [15:0] imm;
-    wire [15:0] pc_branch;
-    
-
-    assign inst_addr = pc;
-
+    wire [31:0] pc_branch;
 
 	assign opcode       = inst[31:26];
 	assign func         = inst[5:0];
@@ -41,6 +37,7 @@ module mips_core(
 	assign rd_num       = inst[15:11];
     assign sh_amount    = inst[10:6];
     assign imm          = inst[15:0];
+    assign pc_branch = 32'b0;
 
 
     always @(posedge clk) begin
@@ -48,7 +45,7 @@ module mips_core(
            inst_addr <= 32'b0;  
         end
         else begin
-            if(pc_branch != 16'b0) begin
+            if(pc_branch != 32'b0) begin
                 inst_addr <= inst_addr + pc_branch;
             end
             else begin 
@@ -70,7 +67,7 @@ module mips_core(
         .rd_num(rd_num),
         .sh_amount(sh_amount),
         .imm(imm),
-        .pc_branch(pc_branch)
+        .pc_branch(pc_branch),
         .halted_signal(halted)
     );
 endmodule

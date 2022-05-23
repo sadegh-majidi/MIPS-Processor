@@ -6,17 +6,18 @@ module control_unit(
         input[4:0] rs_num, rt_num, rd_num,
         input[4:0]  sh_amount,
         input[15:0] imm,
-        output reg halted_signal
-        output reg [15:0] pc_branch
+        output reg halted_signal,
+        output reg [31:0] pc_branch
 );
 
-    wire [15:0] tmp_pc_branch;
+    reg [31:0] tmp_pc_branch;
     wire [31:0] rs_data, rt_data;
     reg tmp_halted_signal;
     /* verilator lint_off UNOPTFLAT */
     reg [4:0] reg_rs_num, reg_rt_num, reg_rd_num;
     reg [31:0] rd_data_output;
     reg rd_we;
+
     regfile regfile_1 (
             .rs_data(rs_data),
             .rt_data(rt_data),
@@ -30,23 +31,22 @@ module control_unit(
             .halted(tmp_halted_signal)
         );
 
-    assign tmp_pc_branch = 16'b0;
+    assign tmp_pc_branch = 32'b0;
 
     always @(posedge clk) begin
        if(!rst_b) begin
            halted_signal <= 1'b0;
        end
        else begin
-           pc_branch <= tmp_pc_branch
+           pc_branch <= tmp_pc_branch;
            halted_signal <= tmp_halted_signal;
        end
     end
-
+    /* verilator lint_off LATCH */
     always @(*) begin
         // R type
         if (opcode == 6'b0) begin
             case(func) 
-                // add hamchin chizi
                 6'b100110: begin //xor
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
@@ -58,7 +58,7 @@ module control_unit(
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data << sh_amount;
+                    rd_data_output = rt_data << sh_amount;
                     rd_we = 1'b1;
                 end
                 6'b000100: begin //sllv
@@ -79,14 +79,14 @@ module control_unit(
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data >> rt_data;
+                    rd_data_output = rt_data >> sh_amount;
                     rd_we = 1'b1;
                 end
                 6'b000110: begin //srlv
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data >> sh_amount;
+                    rd_data_output = rt_data >> rs_data;
                     rd_we = 1'b1;
                 end
                 6'b101010: begin //slt
@@ -159,10 +159,11 @@ module control_unit(
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data >> sh_amount[4:0];
+                    rd_data_output = rt_data >>> sh_amount[4:0];
                     rd_we = 1'b1;
                 end
                 default: begin  
+                    tmp_pc_branch = 32'b0;
                     tmp_halted_signal = 1'b1;
                     rd_we = 1'b0;
                 end  
@@ -192,7 +193,7 @@ module control_unit(
                     reg_rt_num = rt_num;
                     reg_rd_num = rt_num;
                     /* verilator lint_off WIDTH */
-                    rd_data_output = rs_data * imm;
+                    rd_data_output = rs_data & imm;
                     rd_we = 1'b1;
                 end
                 6'b001110: begin //xori
@@ -203,68 +204,73 @@ module control_unit(
                     rd_data_output = rs_data ^ imm;
                     rd_we = 1'b1;
                 end
-                6'b001110: begin //ori
-                    reg_rs_num = rs_num;
-                    reg_rt_num = rt_num;
-                    reg_rd_num = rt_num;
-                    /* verilator lint_off WIDTH */
-                    rd_data_output = rs_data | imm;
-                    rd_we = 1'b1;
-                end
-                6'b000100: begin //beq TODO
-                    reg_rs_num = rs_num;
-                    reg_rt_num = rt_num;
-                    tmp_pc_branch = (rs_data == rt_data)?  imm|2'b0 : 0;
+                // 6'b001110: begin //ori
+                //     reg_rs_num = rs_num;
+                //     reg_rt_num = rt_num;
+                //     reg_rd_num = rt_num;
+                //     /* verilator lint_off WIDTH */
+                //     rd_data_output = rs_data | imm;
+                //     rd_we = 1'b1;
+                // end
+                // 6'b000100: begin //beq TODO
+                //     reg_rs_num = rs_num;
+                //     reg_rt_num = rt_num;
+                //     /* verilator lint_off WIDTH */
+                //     tmp_pc_branch = (rs_data == rt_data)?  imm|2'b0 : 0;
                     
-                end
-                6'b000101: begin //bne //TODO
-                    reg_rs_num = rs_num;
-                    reg_rt_num = rt_num;
-                    tmp_pc_branch = (rs_data != rt_data)?  imm|2'b0 : 0;
-                end
-                6'b000110: begin //blez //TODO
-                    // rs <= 0: PC ← PC + SIGN EXTEND (Imm | “00”)
-                    reg_rs_num = rs_num;
-                    reg_rt_num = rt_num;
-                    tmp_pc_branch = (rs_data <= 0)?  imm|2'b0 : 0;
-                end
-                6'b000111: begin //bgtz //TODO
-                    // es > 0: PC ← PC + SIGN EXTEND (Imm | “00”)
-                    reg_rs_num = rs_num;
-                    reg_rt_num = rt_num;
-                    tmp_pc_branch = (rs_data > 0)?  imm|2'b0 : 0;
-                end
-                6'b000001: begin //bgez //TODO
-                    // rs >= 0: PC ← PC + SIGN EXTEND (Imm | “00”)
-                    reg_rs_num = rs_num;
-                    reg_rt_num = rt_num;
-                    tmp_pc_branch = (rs_data >= 0)?  imm|2'b0 : 0;
-                end
-                6'b100011: begin //lw //TODO
-                    // rt ← MEM [$rs + SIGN EXTEND (Imm)]
-                    // new instruction
-                    aluctl[5:1] = 5'd23;
-                end
-                6'b101011: begin //sw //TODO
-                    // MEM [$rs+ SIGN EXTEND (Imm)] ← rt
-                    // new instruction
-                    aluctl[5:1] = 5'd24;
-                end
-                6'b100000: begin //lb //TODO
-                    // rt[7:0] ← MEM [$rs+ SIGN EXTEND (Imm)]
-                    // new instruction
-                    aluctl[5:1] = 5'd25;
-                end
-                6'b101000: begin //sb //TODO
-                    // MEM [$rs+ SIGN EXTEND (Imm)] ← rt [7:0]
-                    // new instruction
-                    aluctl[5:1] = 5'd26;
-                end
-                6'b001010: begin //slti //TODO
-                    // Set to 1 if Less, rs< SIGN EXTEND (Imm) , rt=1
-                    // new instruction
-                    aluctl[5:1] = 5'd27;
-                end
+                // end
+                // 6'b000101: begin //bne //TODO
+                //     reg_rs_num = rs_num;
+                //     reg_rt_num = rt_num;
+                //     /* verilator lint_off WIDTH */
+                //     tmp_pc_branch = (rs_data != rt_data)?  imm|2'b0 : 0;
+                // end
+                // 6'b000110: begin //blez //TODO
+                //     // rs <= 0: PC ← PC + SIGN EXTEND (Imm | “00”)
+                //     reg_rs_num = rs_num;
+                //     reg_rt_num = rt_num;
+                //     /* verilator lint_off WIDTH */
+                //     tmp_pc_branch = (rs_data <= 0)?  imm|2'b0 : 0;
+                // end
+                // 6'b000111: begin //bgtz //TODO
+                //     // es > 0: PC ← PC + SIGN EXTEND (Imm | “00”)
+                //     reg_rs_num = rs_num;
+                //     reg_rt_num = rt_num;
+                //     /* verilator lint_off WIDTH */
+                //     tmp_pc_branch = (rs_data > 0)?  imm|2'b0 : 0;
+                // end
+                // 6'b000001: begin //bgez //TODO
+                //     // rs >= 0: PC ← PC + SIGN EXTEND (Imm | “00”)
+                //     reg_rs_num = rs_num;
+                //     reg_rt_num = rt_num;
+                //     /* verilator lint_off WIDTH */
+                //     tmp_pc_branch = (rs_data >= 32'b0)?  imm|2'b0 : 0;
+                // end
+                // 6'b100011: begin //lw //TODO
+                //     // rt ← MEM [$rs + SIGN EXTEND (Imm)]
+                //     // new instruction
+                //     aluctl[5:1] = 5'd23;
+                // end
+                // 6'b101011: begin //sw //TODO
+                //     // MEM [$rs+ SIGN EXTEND (Imm)] ← rt
+                //     // new instruction
+                //     aluctl[5:1] = 5'd24;
+                // end
+                // 6'b100000: begin //lb //TODO
+                //     // rt[7:0] ← MEM [$rs+ SIGN EXTEND (Imm)]
+                //     // new instruction
+                //     aluctl[5:1] = 5'd25;
+                // end
+                // 6'b101000: begin //sb //TODO
+                //     // MEM [$rs+ SIGN EXTEND (Imm)] ← rt [7:0]
+                //     // new instruction
+                //     aluctl[5:1] = 5'd26;
+                // end
+                // 6'b001010: begin //slti //TODO
+                //     // Set to 1 if Less, rs< SIGN EXTEND (Imm) , rt=1
+                //     // new instruction
+                //     aluctl[5:1] = 5'd27;
+                // end
                 6'b001111: begin //lui
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
@@ -275,13 +281,13 @@ module control_unit(
                 end
             // J format
             // todo: J
-                6'b000010: begin
-                    // PC←{( PC), address,00}
-                end
-                6'b000011: begin
-                    // R[31] ← PC then go to procedure address
-                    // PC←{( PC), address,00}
-                end
+                // 6'b000010: begin
+                //     // PC←{( PC), address,00}
+                // end
+                // 6'b000011: begin
+                //     // R[31] ← PC then go to procedure address
+                //     // PC←{( PC), address,00}
+                // end
                 default: begin  
                     tmp_halted_signal = 1'b1;
                     rd_we = 1'b0;

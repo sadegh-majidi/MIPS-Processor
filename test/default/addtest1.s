@@ -1,5 +1,6 @@
         # Basic addition tests
 	.text
 main:   
-        addu  $5, $4, $3
+        addiu   $2, $zero, 1024
+        addiu   $v0, $zero, 0xa
         syscall
