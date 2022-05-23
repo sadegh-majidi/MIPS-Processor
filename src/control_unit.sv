@@ -83,7 +83,7 @@ module control_unit(
 
     /* verilator lint_off LATCH */
     always @(*) begin
-        $display("in the CU inst_addr=%b, opcode=%b, imm=%b rs_num=%b, rt_num=%b", inst_addr, opcode, imm, rs_num, rt_num);
+        // $display("in the CU inst_addr=%b, opcode=%b, imm=%b rs_num=%b, rt_num=%b", inst_addr, opcode, imm, rs_num, rt_num);
         // R type
         tmp_pc_j_en = 1'b0;
         tmp_pc_branch_en = 1'b0;
@@ -93,49 +93,70 @@ module control_unit(
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data ^ rt_data;
+                    alu_input_A = rs_data;
+                    alu_input_B = rt_data;
+                    alu_ctl = 4'd4;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b000000: begin //sll
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rt_data << sh_amount;
+                    alu_input_A = rt_data;
+                    alu_input_B = {27'b0, sh_amount};
+                    alu_ctl = 4'd9;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b000100: begin //sllv
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data << rs_data;
+                    alu_input_A = rt_data;
+                    alu_input_B = rs_data;
+                    alu_ctl = 4'd9;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                  6'b100010: begin //sub
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data - rt_data;
+                    alu_input_A = rs_data;
+                    alu_input_B = rt_data;
+                    alu_ctl = 4'd1;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b000010: begin //srl
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rt_data >> sh_amount;
+                    alu_input_A = rt_data;
+                    alu_input_B = {27'b0, sh_amount};
+                    alu_ctl = 4'd8;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b000110: begin //srlv
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rt_data >> rs_data;
+                    alu_input_A = rt_data;
+                    alu_input_B = rs_data;
+                    alu_ctl = 4'd8;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
-                6'b101010: begin //slt
+                6'b101010: begin //slt ??
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data <<< rt_data[4:0];
+                    alu_input_A = rs_data;
+                    alu_input_B = {27'b0, rt_data[4:0]};
+                    alu_ctl = 4'd11;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b001100: begin //syscall
@@ -145,63 +166,90 @@ module control_unit(
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data - rt_data;
+                    alu_input_A = rs_data;
+                    alu_input_B = rt_data;
+                    alu_ctl = 4'd1;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b100101: begin //or
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data | rt_data;
+                    alu_input_A = rs_data;
+                    alu_input_B = rt_data;
+                    alu_ctl = 4'd6;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b100111: begin //nor
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = ~(rs_data | rt_data);
+                    alu_input_A = rs_data;
+                    alu_input_B = rt_data;
+                    alu_ctl = 4'd7;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b100001: begin //addu
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data + rt_data;
+                    alu_input_A = rs_data;
+                    alu_input_B = rt_data;
+                    alu_ctl = 4'd0;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b011000: begin //mult
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data * rt_data;
+                    alu_input_A = rs_data;
+                    alu_input_B = rt_data;
+                    alu_ctl = 4'd2;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b011010: begin //div
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data / rt_data;
+                    alu_input_A = rs_data;
+                    alu_input_B = rt_data;
+                    alu_ctl = 4'd3;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b100100: begin //and
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data & rt_data;
+                    alu_input_A = rs_data;
+                    alu_input_B = rt_data;
+                    alu_ctl = 4'd5;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b100000: begin //add
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rs_data + rt_data;
+                    alu_input_A = rs_data;
+                    alu_input_B = rt_data;
+                    alu_ctl = 4'd0;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b000011: begin //sra
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rd_num;
-                    rd_data_output = rt_data >>> sh_amount;
+                    alu_input_A = rt_data;
+                    alu_input_B = {27'b0, sh_amount};
+                    alu_ctl = 4'd10;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 default: begin  
@@ -221,8 +269,10 @@ module control_unit(
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rt_num;
-                    /* verilator lint_off WIDTH */
-                    rd_data_output = rs_data + imm;
+                    alu_input_A = rs_data;
+                    alu_input_B = { {16{imm[15]}}, imm };
+                    alu_ctl = 4'd0;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b001001: begin //addiu
@@ -230,36 +280,39 @@ module control_unit(
                     reg_rt_num = rt_num;
                     reg_rd_num = rt_num;
                     alu_input_A = rs_data;
-                    alu_input_B = imm;
+                    alu_input_B = {16'b0, imm};
                     alu_ctl = 4'd0;
                     rd_data_output = alu_output;
-                    // if(imm == 16'b0001001100110111 && inst_addr==32'b00000000000000000000000000101100) begin
-                    //     rd_data_output = 32'b00000000000000001101000000001101;
-                    // end
                     rd_we = 1'b1;
                 end
                 6'b001100: begin //andi
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rt_num;
-                    /* verilator lint_off WIDTH */
-                    rd_data_output = rs_data & imm;
+                    alu_input_A = rs_data;
+                    alu_input_B = {16'b0, imm};
+                    alu_ctl = 4'd5;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b001110: begin //xori
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rt_num;
-                    /* verilator lint_off WIDTH */
-                    rd_data_output = rs_data ^ imm;
+                    alu_input_A = rs_data;
+                    alu_input_B = {16'b0, imm};
+                    alu_ctl = 4'd4;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b001101: begin //ori //TODO
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rt_num;
-                    /* verilator lint_off WIDTH */
-                    rd_data_output = rs_data | { 16'b0, imm};
+                    alu_input_A = rs_data;
+                    alu_input_B = {16'b0, imm};
+                    alu_ctl = 4'd6;
+                    rd_data_output = alu_output;
                     rd_we = 1'b1;
                 end
                 6'b000100: begin //beq TODO
@@ -268,25 +321,30 @@ module control_unit(
                     tmp_imm = {imm , 2'b0};
                     tmp_imm2 = { {14{tmp_imm[17]}}, tmp_imm };
                     tmp_imm2 = tmp_imm2 + 32'd4;
-                    tmp_pc_branch = (rs_data == rt_data)?  tmp_imm2 : 0;
-                    tmp_pc_branch_en = (rs_data == rt_data)? 1'b1 : 1'b0;
-                    $display("in BEQ rs_data=%b, rt_data=%b imm=%b tmp_imm=%b tmp_imm2=%b tmp_pc_branch=%b, tmp_pc_branch_en=%b",rs_data, rt_data, imm, tmp_imm, tmp_imm2, tmp_pc_branch, tmp_pc_branch_en);
+                    alu_input_A = rs_data;
+                    alu_input_B = rt_data;
+                    alu_ctl = 4'd12;
+                    tmp_pc_branch = (alu_output[0])?  tmp_imm2 : 0;
+                    tmp_pc_branch_en = (alu_output[0])? 1'b1 : 1'b0;
+                    // $display("in BEQ rs_data=%b, rt_data=%b imm=%b tmp_imm=%b tmp_imm2=%b tmp_pc_branch=%b, tmp_pc_branch_en=%b",rs_data, rt_data, imm, tmp_imm, tmp_imm2, tmp_pc_branch, tmp_pc_branch_en);
                 end
                 6'b000101: begin //bne //TODO
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     /* verilator lint_off WIDTH */
                     tmp_imm = {imm , 2'b0};
-                    tmp_pc_branch = (rs_data != rt_data)?  { {14{tmp_imm[17]}}, tmp_imm } + 32'd4 : 0;
-                    tmp_pc_branch_en = (rs_data != rt_data)? 1'b1: 1'b0;
-                    $display("in BNE rs_data=%b, rt_data=%b  tmp_pc_branch=%b, tmp_pc_branch_en=%b",rs_data, rt_data, tmp_pc_branch, tmp_pc_branch_en);
+                    alu_input_A = rs_data;
+                    alu_input_B = rt_data;
+                    alu_ctl = 4'd12;
+                    tmp_pc_branch = (!alu_output[0])?  { {14{tmp_imm[17]}}, tmp_imm } + 32'd4 : 0;
+                    tmp_pc_branch_en = (!alu_output[0])? 1'b1: 1'b0;
+                    // $display("in BNE rs_data=%b, rt_data=%b  tmp_pc_branch=%b, tmp_pc_branch_en=%b",rs_data, rt_data, tmp_pc_branch, tmp_pc_branch_en);
 
                 end
                 6'b001111: begin //lui
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
                     reg_rd_num = rt_num;
-                    /* verilator lint_off WIDTH */
                     rd_data_output = {imm, 16'b0};
                     rd_we = 1'b1;
                 end
@@ -312,14 +370,14 @@ module control_unit(
                         rd_data_output = 32'b00000000000000000000000011111111;
                     end
                     rd_we = 1'b1;
-                    $display("imm=%b", imm);
-                    $display("in lw======================= mem_addr=%b, extended imm=%b, rs_data=%b, rd_data_out=%b", mem_addr, {{16{imm[15]}}, imm}, rs_data, rd_data_output);
+                    // $display("imm=%b", imm);
+                    // $display("in lw======================= mem_addr=%b, extended imm=%b, rs_data=%b, rd_data_out=%b", mem_addr, {{16{imm[15]}}, imm}, rs_data, rd_data_output);
                 end
             // J format
                 6'b000010: begin //j
                     tmp_pc_j = {address_j_format, 2'b0};
                     tmp_pc_j_en = 1'b1;
-                    $display("In JJJJJJ   address_j_format=%b, tmp_pc_j=%b", address_j_format, tmp_pc_j);
+                    // $display("In JJJJJJ   address_j_format=%b, tmp_pc_j=%b", address_j_format, tmp_pc_j);
                 end
                 default: begin  
                     tmp_pc_j_en = 1'b0;

@@ -60,19 +60,19 @@ module mips_core(
             if(pc_branch_en == 1'b1) begin
                 inst_addr <= inst_addr + pc_branch;
                 tmp_inst_addr <= inst_addr + pc_branch;
-                $display("in mips BNE pc inst=%b",inst_addr + pc_branch);
+                // $display("in mips BNE pc inst=%b",inst_addr + pc_branch);
             end
             else if(pc_j_en == 1'b1) begin 
                 inst_addr <= {inst_addr[31:28], pc_j};
                 tmp_inst_addr <= {inst_addr[31:28], pc_j};
-                $display("in mips core pc inst=%b",{inst_addr[31:28], pc_j});
+                // $display("in mips core pc inst=%b",{inst_addr[31:28], pc_j});
             end
             else begin
                   inst_addr <= inst_addr + 32'd4;
                   tmp_inst_addr <= inst_addr + 32'd4;
             end
         end
-        $display("clock===== done inst=%b opcode=%b func=%b pc=%b",inst , opcode, func, inst_addr);
+        // $display("clock===== done inst=%b opcode=%b func=%b pc=%b",inst , opcode, func, inst_addr);
     end
 
     alu alu_ (
