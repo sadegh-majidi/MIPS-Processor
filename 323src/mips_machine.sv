@@ -6,7 +6,7 @@ module mips_machine(
     input rst_b;
 
     wire halted;
-
+/* verilator lint_off UNOPTFLAT */
     wire [31:0] inst_addr;
     wire [31:0] mem_addr;
     wire [31:0] inst;
