@@ -31,6 +31,8 @@ module mips_core(
     wire [15:0] pc_branch;
     
 
+    assign inst_addr = pc;
+
 
 	assign opcode       = inst[31:26];
 	assign func         = inst[5:0];
