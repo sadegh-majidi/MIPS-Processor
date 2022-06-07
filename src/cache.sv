@@ -1,16 +1,14 @@
 module cache#(parameter n = 13)(input read, input write, input clk, output reg[1023:0] load_data, input[1023:0] write_data, input[31:0] load_address, input[31:0] write_address, 
-output reg hit, output reg ready, output reg[7:0] mem_data_in[0:3], input [7:0] mem_data_out[0:3], output reg mem_write_en);
-reg[31:0] n_of_blocks;
-initial begin
-n_of_blocks = 1 << (n-7);
-end
+output reg hit, output reg ready, output reg[7:0] mem_data_in[0:3], input [7:0] mem_data_out[0:3], output reg mem_write_en, input rst);
+parameter n_of_blocks = 1 << (n-7);
 reg [1023:0] memory [n_of_blocks-1:0];
-// each block has 32 words. each word has 32 bits. => each block has 1024 bits = 256 words. cache has 2**(n-7) blocks. default is 2**(13-5) = 64 blocks 
+// each block has 32 words. each word has 32 bits. => each block has 1024 bits = 32 words. cache has 2**(n-7) blocks. default is 2**(13-7) = 64 blocks 
 reg valid[n_of_blocks-1:0]; // valid bits
 reg dirty[n_of_blocks-1:0]; // dirty bits
+reg [32-n:0] tag[n_of_blocks-1:0]; // tag bits . It has 32-n bits for each block. because each block has n bytes and address is 32 bits
 
-integer counter = 4;
-integer d_counter = 5;
+integer counter = 0;
+integer d_counter = 0;
 reg ram_data_ready;
 reg dirty_replace_ok;
 
@@ -26,20 +24,26 @@ ram_data_ready = 1'b0;
 dirty_replace_ok = 1'b0;
 end
 
+always @(negedge rst) begin
+ready = 1'b0;
+end
+
 
 always @(posedge clk) begin // p
 
+$display("posedge clk at time = %t.", $time);
 
-if (counter == 0) begin // i
+if (counter == 0 || (counter != 0 && d_counter != 0)) begin // i
 
 if (d_counter == 0) begin // j
 
 if (read) begin // h
-if (valid[load_address[n-1:n-6]] == 1'b0) // r
+if (valid[load_address[n-1:n-6]] == 1'b0 || load_address[31:n] != tag[load_address[n-1:n-6]]) // r
 begin // r
 
 	if (dirty[load_address[n-1:n-6]] == 1'b1) begin
 	if (dirty_replace_ok == 1'b0) begin
+	$display("dirty_replace not ok. setting d_counter = 1. time = %t", $time);
 	mem_write_en = 1'b1;
 	mem_data_in[3] = memory[load_address[n-1:n-6]][1023:768];
 	mem_data_in[2] = memory[load_address[n-1:n-6]][767:512];
@@ -50,10 +54,12 @@ begin // r
 	end
 	
 	if (ram_data_ready) begin // m
+	$display("ram data ready. now i'm writing mem_data_out in load_address. mem_data_out[0] = %b, mem_data_out[1] = %b, mem_data_out[2] = %b, mem_data_out[3] = %b. time = %t", mem_data_out[0], mem_data_out[1], mem_data_out[2], mem_data_out[3], $time);
 	memory[load_address[n-1:n-6]][1023:768] = mem_data_out[3];
 	memory[load_address[n-1:n-6]][767:512] = mem_data_out[2];
 	memory[load_address[n-1:n-6]][511:256] = mem_data_out[1];
 	memory[load_address[n-1:n-6]][256:0] = mem_data_out[0];
+	tag[load_address[n-1:n-6]] = load_address[31:n];
 	valid[load_address[n-1:n-6]] = 1'b1;
 	dirty[load_address[n-1:n-6]] = 1'b0;
 	hit = 1'b1;
@@ -63,6 +69,7 @@ begin // r
 	dirty_replace_ok = 1'b0;
 	end // m
 	else begin // m
+	$display("ram data not ready. setting counter = 1. time = %t", $time);
 	ready = 1'b0;
 	hit = 1'b0;
 	load_data = 1024'bz;
@@ -74,20 +81,24 @@ else begin // r
 	ready = 1'b1;
 	hit = 1'b1;
 	load_data = memory[load_address[n-1:n-6]];
+	$display("successful hit. loading value %b to load_data. at time = %t", load_data, $time);
 end // r
 end // h
 else if (write) begin // h
-	memory[load_address[n-1:n-6]] = load_data;
+	$display("writing write_data = %b in address load_address[n-1:n-6] = %b at time %t", write_data, load_address[n-1:n-6], $time);
+	memory[load_address[n-1:n-6]] = write_data;
 	dirty[load_address[n-1:n-6]] = 1'b1;
 end // h
 
 end // j
 else begin // j
+$display("d_counter is %d and now its going to increase. time = %t", d_counter, $time);
 d_counter = d_counter + 1;
 if (d_counter == 2) begin
 mem_write_en = 1'b0;
 end
 if (d_counter == 6) begin
+$display("d_counter was 6 so now its 0. time = %t", $time);
 dirty_replace_ok = 1'b1;
 d_counter = 0;
 end
@@ -95,11 +106,14 @@ end // j
 
 end // i
 else begin  // i
+$display("counter is %d and now its going to increase. time = %t", counter, $time);
 counter = counter + 1;
 if (counter == 5) begin
+$display("counter was 5 so now its 0. time = %t", $time);
 counter = 0;
 ram_data_ready = 1'b1;
 end
 end // i
 end // p
 endmodule
+
