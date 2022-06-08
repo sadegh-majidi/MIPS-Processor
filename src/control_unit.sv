@@ -10,6 +10,7 @@ module control_unit(
         input [31:0] inst_addr,
         input [7:0]  mem_data_out[0:3],
         input [31:0] alu_output,
+        input cache_ready,
 
         output reg[31:0] mem_addr,
         output reg[7:0]  mem_data_in[0:3],
@@ -21,7 +22,11 @@ module control_unit(
         output reg pc_j_en,
         output reg [31:0] alu_input_A,
         output reg [31:0] alu_input_B,
-        output reg [3:0] alu_ctl
+        output reg [3:0] alu_ctl,
+        output reg cache_write,
+        output reg cache_read,
+        output reg [31:0] cache_write_data,
+        output reg [31:0] cache_load_data
 );
 
     /* verilator lint_off UNOPTFLAT */
@@ -353,15 +358,19 @@ module control_unit(
                     reg_rt_num = rt_num;
                     /* verilator lint_off STMTDLY */
                     mem_addr = rs_data + {{16{imm[15]}}, imm};
-                    mem_data_in[0] = rt_data[7:0];
-                    mem_data_in[1] = rt_data[15:8];
-                    mem_data_in[2] = rt_data[23:16];
-                    mem_data_in[3] = rt_data[31:24];
+                    // todo: change cache_write
+                    // todo: use cache_write_data to store data in mem
+                    // mem_data_in[0] = rt_data[7:0];
+                    // mem_data_in[1] = rt_data[15:8];
+                    // mem_data_in[2] = rt_data[23:16];
+                    // mem_data_in[3] = rt_data[31:24];
                     mem_write_en = 1'b1;
                     // $display("in SW rs_data=%b mem_addr=%b, tmp_mem_data_in=%b, tmp_mem_data_in=%b, tmp_mem_data_in=%b ,tmp_mem_data_in=%b tmp_mem_write_en=%b", rs_data, tmp_mem_addr, tmp_mem_data_in[3],tmp_mem_data_in[2],tmp_mem_data_in[1],tmp_mem_data_in[0], tmp_mem_write_en);
                     // $display("in SW rs_data=%b mem_addr=%b, mem_data_in=%b, mem_data_in=%b, mem_data_in=%b, mem_data_in=%b, mem_write_en=%b", rs_data, mem_addr, mem_data_in[3], mem_data_in[2], mem_data_in[1], mem_data_in[0], mem_write_en);
                 end
                  6'b100011: begin //lw //TODO
+                     // todo: change cache_read
+                     // todo: use cache_load_data to load data from mem (or cache) and load when cache_ready is 1.
                     reg_rd_num = rt_num;
                     reg_rs_num = rs_num;
                     mem_addr = rs_data + {{16{imm[15]}}, imm};
