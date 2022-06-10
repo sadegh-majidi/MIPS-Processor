@@ -382,6 +382,23 @@ module control_unit(
                     // $display("imm=%b", imm);
                     // $display("in lw======================= mem_addr=%b, extended imm=%b, rs_data=%b, rd_data_out=%b", mem_addr, {{16{imm[15]}}, imm}, rs_data, rd_data_output);
                 end
+                6'b100000: begin // LB // TODO
+                    reg_rd_num = rt_num;
+                    reg_rs_num = rs_num;
+                    mem_addr = rs_data + {{16{imm[15]}}, imm};
+                    if (cache_ready) begin
+                        rd_data_output = {mem_data_out[3], mem_data_out[2], mem_data_out[1], mem_data_out[0]};
+                        rd_we = 1'b1;
+                    end
+                end
+                6'b101000: begin // SB // TODO
+                    reg_rd_num = rt_num;
+                    reg_rs_num = rs_num;
+                    mem_addr = rs_data + {{16{imm[15]}}, imm};
+                    if (cache_ready) begin
+                        
+                    end
+                end
             // J format
                 6'b000010: begin //j
                     tmp_pc_j = {address_j_format, 2'b0};
