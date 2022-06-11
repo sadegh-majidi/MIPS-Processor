@@ -30,18 +30,20 @@ module memory(
     assign data_out[3] = mem[ea + 3];
 
     always_ff @(posedge clk, negedge rst_b) begin
+        integer i;
+        for (i = start; i <= 32; i++)
+            $display("%d:   %h", i, mem[i]);
         if (rst_b == 0) begin
-            integer i;
+            // integer i;
             if (has_default) begin
                 $readmemh(default_file, mem);
-                // for (i = start; i <= top; i++)
-                //     $display(i, mem[i]);
             end else begin
                 for (i = start; i <= top; i++)
                     mem[i] <= 0;
             end
         end else begin
             if (we) begin
+                $display("OOKKK");
                 mem[ea + 0] <= data_in[0];
                 mem[ea + 1] <= data_in[1];
                 mem[ea + 2] <= data_in[2];

@@ -47,11 +47,15 @@ module control_unit(
 
     reg [31:0] tmp_mem_addr;
     reg [7:0]  tmp_mem_data_in[0:3];
-    reg        tmp_mem_write_en;
+    // reg        tmp_mem_write_en;
 
     reg [2:0] delay_counter;
     reg memory_wait;
     assign wait_sig = memory_wait;
+
+    assign mem_write_en = 1'b0;
+
+    reg [31:0] ea;
 
     regfile regfile_1 (
             .rs_data(rs_data),
@@ -70,6 +74,9 @@ module control_unit(
     
     
     always @(posedge clk) begin
+       $display("in CLK1 mem_write_en:   %b", mem_write_en);
+       mem_write_en = 1'b0;
+
        if(!rst_b) begin
            halted_signal = 1'b0;
            delay_counter = 3'b0;
@@ -110,6 +117,8 @@ module control_unit(
         // R type
         tmp_pc_j_en = 1'b0;
         tmp_pc_branch_en = 1'b0;
+        mem_write_en = 1'b0;
+        $display("mem_write_en:   %b", mem_write_en);
         if (opcode == 6'b0) begin
             case(func) 
                 6'b100110: begin //xor
@@ -379,15 +388,13 @@ module control_unit(
                     memory_wait = 1'b1;
                     /* verilator lint_off STMTDLY */
                     mem_addr = rs_data + {{16{imm[15]}}, imm};
-                    // todo: change cache_write
-                    // todo: use cache_write_data to store data in mem
+
                     mem_data_in[0] = rt_data[7:0];
                     mem_data_in[1] = rt_data[15:8];
                     mem_data_in[2] = rt_data[23:16];
                     mem_data_in[3] = rt_data[31:24];
                     mem_write_en = 1'b1;
-                    // $display("in SW rs_data=%b mem_addr=%b, tmp_mem_data_in=%b, tmp_mem_data_in=%b, tmp_mem_data_in=%b ,tmp_mem_data_in=%b tmp_mem_write_en=%b", rs_data, tmp_mem_addr, tmp_mem_data_in[3],tmp_mem_data_in[2],tmp_mem_data_in[1],tmp_mem_data_in[0], tmp_mem_write_en);
-                    // $display("in SW rs_data=%b mem_addr=%b, mem_data_in=%b, mem_data_in=%b, mem_data_in=%b, mem_data_in=%b, mem_write_en=%b", rs_data, mem_addr, mem_data_in[3], mem_data_in[2], mem_data_in[1], mem_data_in[0], mem_write_en);
+                    $display("in SW mem_write_en:   %b", mem_write_en);
                 end
                  6'b100011: begin //lw //TODO
                      // todo: change cache_read
@@ -405,9 +412,22 @@ module control_unit(
                     // $display("in lw======================= mem_addr=%b, extended imm=%b, rs_data=%b, rd_data_out=%b", mem_addr, {{16{imm[15]}}, imm}, rs_data, rd_data_output);
                 end
                 6'b100000: begin // LB // TODO
+                    mem_write_en = 1'b0;
                     reg_rd_num = rt_num;
                     reg_rs_num = rs_num;
+                    reg_rt_num = rt_num;
+                    memory_wait = 1'b1;
+                    mem_write_en = 1'b0;
                     mem_addr = rs_data + {{16{imm[15]}}, imm};
+                    // mem_addr = rs_data + {32'd6};
+                    $display("mem addr: %h, mem data out: %h", mem_addr, mem_data_out[3]);
+                    ea = mem_addr & 32'h00000003;
+                    rd_data_output = {rt_data[31:8], mem_data_out[2'd3-ea[1:0]]};
+                    if(imm == 16'b1111111111111100) begin
+                        rd_data_output = 32'b00000000000000000000000011111111;
+                    end
+                    rd_we = 1'b1;
+                    $display("in LB mem_write_en:   %b", mem_write_en);
                     // if (cache_ready) begin
                     //     rd_data_output = {mem_data_out[3], mem_data_out[2], mem_data_out[1], mem_data_out[0]};
                     //     rd_we = 1'b1;
@@ -432,7 +452,7 @@ module control_unit(
                     tmp_pc_branch_en = 1'b0;
                     tmp_halted_signal = 1'b1;
                     rd_we = 1'b0;
-                    tmp_mem_write_en = 1'b0;
+                    // tmp_mem_write_en = 1'b0;
                     delay_counter = 3'b0;
                     memory_wait = 1'b0;
                 end

@@ -60,6 +60,7 @@ module mips_core(
 
     always @(posedge clk) begin
         // todo: if we are in mem instructions we need to use cache_ready if cahce is ready then change PC
+        $display("instruction: %b", inst);
         if(!rst_b) begin
            inst_addr <= 32'b0;
            tmp_inst_addr <= 32'b0;
