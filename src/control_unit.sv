@@ -10,7 +10,7 @@ module control_unit(
         input [31:0] inst_addr,
         input [7:0]  mem_data_out[0:3],
         input [31:0] alu_output,
-        input cache_ready,
+        // input cache_ready,
 
         output reg[31:0] mem_addr,
         output reg[7:0]  mem_data_in[0:3],
@@ -23,10 +23,11 @@ module control_unit(
         output reg [31:0] alu_input_A,
         output reg [31:0] alu_input_B,
         output reg [3:0] alu_ctl,
-        output reg cache_write,
-        output reg cache_read,
-        output reg [31:0] cache_write_data,
-        output reg [31:0] cache_load_data
+        output reg wait_sig
+        // output reg cache_write,
+        // output reg cache_read,
+        // output reg [31:0] cache_write_data,
+        // output reg [31:0] cache_load_data
 );
 
     /* verilator lint_off UNOPTFLAT */
@@ -48,6 +49,10 @@ module control_unit(
     reg [7:0]  tmp_mem_data_in[0:3];
     reg        tmp_mem_write_en;
 
+    reg [2:0] delay_counter;
+    reg memory_wait;
+    assign wait_sig = memory_wait;
+
     regfile regfile_1 (
             .rs_data(rs_data),
             .rt_data(rt_data),
@@ -66,14 +71,27 @@ module control_unit(
     
     always @(posedge clk) begin
        if(!rst_b) begin
-           halted_signal <= 1'b0;
+           halted_signal = 1'b0;
+           delay_counter = 3'b0;
+           memory_wait = 1'b0;
        end
        else begin
+           if (memory_wait) begin
+               if (delay_counter != 3'd4) begin
+                   delay_counter = delay_counter + 3'd1;
+               end
+               else begin
+                   delay_counter = 3'b0;
+                   memory_wait = 1'b0;
+               end
+           end
+           else begin
+           halted_signal = tmp_halted_signal;
            pc_branch = tmp_pc_branch;
            pc_j = tmp_pc_j;
            pc_branch_en = tmp_pc_branch_en;
            pc_j_en = tmp_pc_j_en;
-           halted_signal <= tmp_halted_signal;
+           end
        end
     end
 
@@ -264,6 +282,8 @@ module control_unit(
                     tmp_pc_j_en = 1'b0;
                     tmp_halted_signal = 1'b1;
                     rd_we = 1'b0;
+                    delay_counter = 3'b0;
+                    memory_wait = 1'b0;
                 end  
             endcase
         end
@@ -356,14 +376,15 @@ module control_unit(
                 6'b101011: begin //sw //TODO
                     reg_rs_num = rs_num;
                     reg_rt_num = rt_num;
+                    memory_wait = 1'b1;
                     /* verilator lint_off STMTDLY */
                     mem_addr = rs_data + {{16{imm[15]}}, imm};
                     // todo: change cache_write
                     // todo: use cache_write_data to store data in mem
-                    // mem_data_in[0] = rt_data[7:0];
-                    // mem_data_in[1] = rt_data[15:8];
-                    // mem_data_in[2] = rt_data[23:16];
-                    // mem_data_in[3] = rt_data[31:24];
+                    mem_data_in[0] = rt_data[7:0];
+                    mem_data_in[1] = rt_data[15:8];
+                    mem_data_in[2] = rt_data[23:16];
+                    mem_data_in[3] = rt_data[31:24];
                     mem_write_en = 1'b1;
                     // $display("in SW rs_data=%b mem_addr=%b, tmp_mem_data_in=%b, tmp_mem_data_in=%b, tmp_mem_data_in=%b ,tmp_mem_data_in=%b tmp_mem_write_en=%b", rs_data, tmp_mem_addr, tmp_mem_data_in[3],tmp_mem_data_in[2],tmp_mem_data_in[1],tmp_mem_data_in[0], tmp_mem_write_en);
                     // $display("in SW rs_data=%b mem_addr=%b, mem_data_in=%b, mem_data_in=%b, mem_data_in=%b, mem_data_in=%b, mem_write_en=%b", rs_data, mem_addr, mem_data_in[3], mem_data_in[2], mem_data_in[1], mem_data_in[0], mem_write_en);
@@ -373,6 +394,7 @@ module control_unit(
                      // todo: use cache_load_data to load data from mem (or cache) and load when cache_ready is 1.
                     reg_rd_num = rt_num;
                     reg_rs_num = rs_num;
+                    memory_wait = 1'b1;
                     mem_addr = rs_data + {{16{imm[15]}}, imm};
                     rd_data_output = {mem_data_out[3], mem_data_out[2], mem_data_out[1], mem_data_out[0]};
                     if(imm == 16'b1111111111111100) begin
@@ -386,18 +408,18 @@ module control_unit(
                     reg_rd_num = rt_num;
                     reg_rs_num = rs_num;
                     mem_addr = rs_data + {{16{imm[15]}}, imm};
-                    if (cache_ready) begin
-                        rd_data_output = {mem_data_out[3], mem_data_out[2], mem_data_out[1], mem_data_out[0]};
-                        rd_we = 1'b1;
-                    end
+                    // if (cache_ready) begin
+                    //     rd_data_output = {mem_data_out[3], mem_data_out[2], mem_data_out[1], mem_data_out[0]};
+                    //     rd_we = 1'b1;
+                    // end
                 end
                 6'b101000: begin // SB // TODO
                     reg_rd_num = rt_num;
                     reg_rs_num = rs_num;
                     mem_addr = rs_data + {{16{imm[15]}}, imm};
-                    if (cache_ready) begin
+                    // if (cache_ready) begin
                         
-                    end
+                    // end
                 end
             // J format
                 6'b000010: begin //j
@@ -411,6 +433,8 @@ module control_unit(
                     tmp_halted_signal = 1'b1;
                     rd_we = 1'b0;
                     tmp_mem_write_en = 1'b0;
+                    delay_counter = 3'b0;
+                    memory_wait = 1'b0;
                 end
             endcase
             end

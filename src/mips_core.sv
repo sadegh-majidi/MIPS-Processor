@@ -21,7 +21,7 @@ module mips_core(
     output reg        mem_write_en;
     output reg        halted;
 
-    reg cache_ready;
+    reg wait_sig;
 
 
     wire [31:0] cache_load_data;
@@ -75,7 +75,7 @@ module mips_core(
                 tmp_inst_addr <= {inst_addr[31:28], pc_j};
                 // $display("in mips core pc inst=%b",{inst_addr[31:28], pc_j});
             end
-            else begin
+            else if (!wait_sig) begin
                   inst_addr <= inst_addr + 32'd4;
                   tmp_inst_addr <= inst_addr + 32'd4;
             end
@@ -83,9 +83,9 @@ module mips_core(
             // cache
             // todo: change PC if cache is ready?
             //
-            if (cache_ready) begin
+            // if (cache_ready) begin
 
-            end
+            // end
         end
         // $display("clock===== done inst=%b opcode=%b func=%b pc=%b",inst , opcode, func, inst_addr);
     end
@@ -98,21 +98,21 @@ module mips_core(
     );
 
 
-    cache cache_ (
-        .read(cache_read),
-        .write(cache_write),
-        .clk(clk),
-        .rst(rst_b),
-        .write_data(cache_write_data),
-        .load_address(cache_load_address),
-        .write_address(cache_write_address),
-        .mem_data_out(mem_data_out),
-        .load_data(cache_load_data),
-        .hit(cache_hit),
-        .ready(cache_ready),
-        .mem_data_in(mem_data_in),
-        .mem_write_en(mem_write_en)
-    );
+    // cache cache_ (
+    //     .read(cache_read),
+    //     .write(cache_write),
+    //     .clk(clk),
+    //     .rst(rst_b),
+    //     .write_data(cache_write_data),
+    //     .load_address(cache_load_address),
+    //     .write_address(cache_write_address),
+    //     .mem_data_out(mem_data_out),
+    //     .load_data(cache_load_data),
+    //     .hit(cache_hit),
+    //     .ready(cache_ready),
+    //     .mem_data_in(mem_data_in),
+    //     .mem_write_en(mem_write_en)
+    // );
 
     control_unit control_unit_ (
         .clk(clk),
@@ -141,10 +141,11 @@ module mips_core(
         .alu_input_A(temp_alu_A),
         .alu_input_B(temp_alu_B),
         .alu_ctl(temp_alu_ctl),
-        .cache_ready(cache_ready),
-        .cache_write(cache_write),
-        .cache_read(cache_read),
-        .cache_write_data(cache_write_data),
-        .cache_load_data(cache_load_data)
+        .wait_sig(wait_sig)
+        // .cache_ready(cache_ready),
+        // .cache_write(cache_write),
+        // .cache_read(cache_read),
+        // .cache_write_data(cache_write_data),
+        // .cache_load_data(cache_load_data)
     );
 endmodule : mips_core
