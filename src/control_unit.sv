@@ -50,13 +50,12 @@ module control_unit(
     // reg        tmp_mem_write_en;
 
     reg [2:0] delay_counter;
+    reg memory_wait;
+
     reg [3:0] delay_counter_for_sb;
     reg memory_wait_for_sb;
-    reg memory_wait;
-    reg check_lw_for_sb = 1'b0;
 
-    reg [31:0] rt_data_for_sb;
-    reg [31:0] mem_addr_for_sb;
+    reg check_lw_for_sb = 1'b0;
 
     assign wait_sig = memory_wait | memory_wait_for_sb;
 
@@ -81,15 +80,26 @@ module control_unit(
     
     
     always @(posedge clk) begin
+    //    $display("in CLK1 mem_write_en:   %b", mem_write_en);
        mem_write_en = 1'b0;
 
        if(!rst_b) begin
            halted_signal = 1'b0;
            delay_counter = 3'b0;
            memory_wait = 1'b0;
-           memory_wait_for_sb = 1'b0;
        end
        else begin
+            if(memory_wait_for_sb) begin
+               if (delay_counter_for_sb != 4'd8) begin
+                   delay_counter_for_sb = delay_counter_for_sb + 3'd1;
+               end
+               else begin
+                   delay_counter_for_sb = 4'b0;
+                   memory_wait_for_sb = 1'b0;
+                   check_lw_for_sb = 1'b0;
+               end
+           end
+
            if (memory_wait) begin
                if (delay_counter != 3'd4) begin
                    delay_counter = delay_counter + 3'd1;
@@ -97,16 +107,6 @@ module control_unit(
                else begin
                    delay_counter = 3'b0;
                    memory_wait = 1'b0;
-                   check_lw_for_sb = 1'b0;
-               end
-           end
-            else if(memory_wait_for_sb) begin
-               if (delay_counter_for_sb != 4'd9) begin
-                   delay_counter_for_sb = delay_counter_for_sb + 3'd1;
-               end
-               else begin
-                   delay_counter_for_sb = 4'b0;
-                   memory_wait_for_sb = 1'b0;
                    check_lw_for_sb = 1'b0;
                end
            end
@@ -313,7 +313,6 @@ module control_unit(
                     rd_we = 1'b0;
                     delay_counter = 3'b0;
                     memory_wait = 1'b0;
-                    memory_wait_for_sb = 1'b0;
                 end  
             endcase
         end
@@ -431,8 +430,6 @@ module control_unit(
                         rd_data_output = 32'b00000000000000000000000011111111;
                     end
                     rd_we = 1'b1;
-                    // $display("we are in lwwwww====== mem_addr=%h data to write=%h", mem_addr, rt_data);
-                    // $display("lwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww");
                     // $display("imm=%b", imm);
                     // $display("in lw======================= mem_addr=%b, extended imm=%b, rs_data=%b, rd_data_out=%b", mem_addr, {{16{imm[15]}}, imm}, rs_data, rd_data_output);
                 end
@@ -447,7 +444,7 @@ module control_unit(
                     // mem_addr = rs_data + {32'd6};
                     // $display("mem addr: %h, mem data out: %h", mem_addr, mem_data_out[3]);
                     ea = mem_addr & 32'h00000003;
-                    rd_data_output = {mem_data_out[3], mem_data_out[2], mem_data_out[1], mem_data_out[0]};
+                    rd_data_output = {rt_data[31:8], mem_data_out[2'd3-ea[1:0]]};
                     if(imm == 16'b1111111111111100) begin
                         rd_data_output = 32'b00000000000000000000000011111111;
                     end
@@ -457,7 +454,7 @@ module control_unit(
                 6'b101000: begin // SB // TODO
                     memory_wait_for_sb = 1'b1;
                     if(delay_counter_for_sb <= 4'd4) begin
-                        reg_rd_num = rt_num;
+                        reg_rd_num = 4'd0;
                         reg_rs_num = rs_num;
                         reg_rt_num = rt_num;
                         memory_wait_for_sb = 1'b1;
@@ -466,28 +463,29 @@ module control_unit(
                         ea = mem_addr & 32'h00000003;
                         rd_data_output = {mem_data_out[3], mem_data_out[2], mem_data_out[1], mem_data_out[0]};
 
-                        if(delay_counter_for_sb == 1'b0) begin
-                            rt_data_for_sb = rt_data[7:0];
-                            mem_addr_for_sb = mem_addr;
-                        end
+                        // if(delay_counter_for_sb == 1'b0) begin
+                        //     rt_data_for_sb = rt_data[7:0];
+                        //     mem_addr_for_sb = mem_addr;
+                        // end
 
                         $display("we are in lw for sb mem_addr=%h data to write=%h, rs_num= %b, rt_num= %b, rd_num = %b", mem_addr, rt_data, reg_rs_num, reg_rt_num, reg_rd_num);
                     end
 
                     if(delay_counter_for_sb >= 4'd4) begin
-                        $display("we are in sb========== and mem_addr= %h, rt_data= %h, rd_data_out = %h", mem_addr_for_sb, rt_data_for_sb, rd_data_output);
+                        // $display("we are in sb========== and mem_addr= %h, rt_data= %h, rd_data_out = %h", mem_addr_for_sb, rt_data_for_sb, rd_data_output);
+                        $display("we are in sb========== and mem_addr= %h, rt_data= %h, rd_data_out = %h", mem_addr, rt_data, rd_data_output);
                         memory_wait_for_sb = 1'b1;
                         /* verilator lint_off STMTDLY */
-                        mem_addr = mem_addr_for_sb;
+                        // mem_addr = mem_addr_for_sb;
 
                         ea = mem_addr & 32'h00000003;
 
-                        mem_data_in[0] = rd_data_output[31:24];
-                        mem_data_in[1] = rd_data_output[23:16];
-                        mem_data_in[2] = rd_data_output[15:8];
-                        mem_data_in[3] = rd_data_output[7:0];
+                        mem_data_in[0] = rd_data_output[7:0];
+                        mem_data_in[1] = rd_data_output[15:8];
+                        mem_data_in[2] = rd_data_output[23:16];
+                        mem_data_in[3] = rd_data_output[31:24];
 
-                        mem_data_in[ea[1:0]] = rt_data_for_sb[7:0];
+                        mem_data_in[2'd3-ea[1:0]] = rt_data[7:0];
                         $display("mem_addr for saving = %h ========================", mem_addr);
 
                         if(delay_counter_for_sb == 4'd4) begin
